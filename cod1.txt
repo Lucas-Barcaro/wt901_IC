@@ -1,0 +1,175 @@
+from machine import UART
+from time import sleep
+import binascii
+import struct
+
+uart = UART(0, 9600)                         # init with given baudrate
+uart.init(9600, bits=8, parity=None, stop=1) # init with given parameters
+
+
+CONSTANTE_1 = 16 * 9.8 / 32768
+CONSTANTE_2 = 2000 / 32768
+CONSTANTE_3 = 180 / 32768
+CONSTANTE_4 = 2000 / 32768
+
+def listDivider(lista):
+    """
+    :param lista: lista nao processada
+    :return: retorna uma lista de listas da seguinte forma:
+
+    lista_retornada[0] = lista_1 com [0x5X seguido de 8 pares de bytes de dados seguido da soma geral]
+    lista_retornada[1] = lista_2 com [0x5X seguido de 8 pares de bytes de dados seguido da soma geral]
+    etc.
+    """
+
+    return lista[0:10], lista[11:21], lista[22:32], lista[33:]
+
+
+def getData(lista_dados):
+    """
+    :param lista_dados: lista de dados de um sensor especifico
+    :return: printa na tela os dados do sensor em questao de forma calculada
+    """
+
+    # lista = lista_dados[0]
+
+
+
+    #lista = []
+
+    if lista_dados:
+        if lista_dados[0] == '0x51':
+            """
+            testa se o dado e em relacao a aceleracao angular
+            """
+            Ax = struct.unpack("<h", bytearray([int(lista_dados[1]), int(lista_dados[2])]))[0] * CONSTANTE_1
+            Ay = struct.unpack("<h", bytearray([int(lista_dados[3]), int(lista_dados[4])]))[0] * CONSTANTE_1
+            Az = struct.unpack("<h", bytearray([int(lista_dados[5]), int(lista_dados[6])]))[0] * CONSTANTE_1
+            temp_celcius = struct.unpack("<h", bytearray([int(lista_dados[7]), int(lista_dados[8])]))[0] / 100
+
+            print("Acel. X: ", Ax)
+            print("Acel. Y: ", Ay)
+            print("Acel. Z: ", Az)
+            print("Temperature: ", temp_celcius)
+
+            # lista.append(Ax)
+            # lista.append(Ay)
+            # lista.append(Az)
+            # lista.append(temp_celcius)
+
+
+        elif lista_dados[0] == '0x52':
+            """
+            testa se o dado e em relacao a velocidade angular
+            """
+            Wx = struct.unpack("<h", bytearray([int(lista_dados[1]), int(lista_dados[2])]))[0] * CONSTANTE_2
+            Wy = struct.unpack("<h", bytearray([int(lista_dados[3]), int(lista_dados[4])]))[0] * CONSTANTE_2
+            Wz = struct.unpack("<h", bytearray([int(lista_dados[5]), int(lista_dados[6])]))[0] * CONSTANTE_2
+
+            # voltage = struct.unpack("<h", bytearray([int(lista_dados[7]), int(lista_dados[8])]))
+
+            print("Vel. ang. X: ", Wx)
+            print("Vel. ang. Y: ", Wy)
+            print("Vel. ang. Z: ", Wz)
+
+            # print("voltage: ", voltage)
+
+            # lista.append(Wx)
+            # lista.append(Wy)
+            # lista.append(Wz)
+            # lista.append(voltage)
+
+
+        elif lista_dados[0] == '0x53':
+            """
+            testa se o dado e em relacao ao angulo
+            """
+
+            roll = struct.unpack("<h", bytearray([int(lista_dados[1]), int(lista_dados[2])]))[0] * CONSTANTE_3
+            pitch = struct.unpack("<h", bytearray([int(lista_dados[3]), int(lista_dados[4])]))[0] * CONSTANTE_3
+            yall = struct.unpack("<h", bytearray([int(lista_dados[5]), int(lista_dados[6])]))[0] * CONSTANTE_3
+
+            print("Roll: ", roll)
+            print("Pitch: ", pitch)
+            print("Yall: ", yall)
+
+            # lista.append(roll)
+            # lista.append(pitch)
+            # lista.append(yall)
+
+        elif lista_dados[0] == '0x54':
+            """
+            testa se o dado e em relacao ao angulo
+            """
+
+            mag_x = struct.unpack("<h", bytearray([int(lista_dados[1]), int(lista_dados[2])]))[0] * CONSTANTE_4
+            mag_y = struct.unpack("<h", bytearray([int(lista_dados[3]), int(lista_dados[4])]))[0] * CONSTANTE_4
+            mag_z = struct.unpack("<h", bytearray([int(lista_dados[5]), int(lista_dados[6])]))[0] * CONSTANTE_4
+
+            # temp_celcius = struct.unpack("<h", bytearray([int(lista_dados[7]), int(lista_dados[8])]))[0] / 100
+
+            print("Mag_x", mag_x)
+            print("Mag_y", mag_y)
+            print("Mag_z", mag_z)
+
+            # print("temp: ", temp_celcius) ta dando 0
+
+            # lista.append(mag_x)
+            # lista.append(mag_y)
+            # lista.append(mag_z)
+            # lista.append(temp_celcius)
+    print("\n")
+    
+
+data_list = []
+cont = 1
+cont2 = 0
+while True:
+    if cont < 0: break
+    
+    leitura = uart.readline()
+    
+    if leitura:
+        
+        if binascii.hexlify(leitura).decode('utf-8') == '55':
+            data_list.clear()
+            
+            while True:
+                data2 = uart.readline()
+                
+                if data2:
+
+                    if len(data_list) == 43:
+                    
+                        lista_intermediaria = listDivider(data_list)
+                    
+                        for i in lista_intermediaria:
+                            getData(i)
+                            cont2+=1
+                            print(cont2)
+                        #lista_intermediaria = []
+                        
+                        break
+                    
+                    data_list.append('0x' + binascii.hexlify(data2).decode('utf-8'))
+            cont += 1
+            #print("lista fina: ", data_list)
+
+
+
+# for list_inside in total_data:
+#     lista_de_listas = listDivider(list_inside)
+#     for lista_singular in lista_de_listas:
+#         getData(lista_singular)
+#         print("\n")
+
+# AS VEZES ELE PRINTA NONE..
+# O RASPBERRY TA EXTREMAMENTE LENTO, NAO DA MAIS DE RODAR OS SCRIPTS
+# PEGAR UM ESP-32
+
+
+
+
+
+    
+
